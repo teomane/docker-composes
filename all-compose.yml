@@ -1,0 +1,106 @@
+version: "3.7"
+
+services:
+  postgres:
+    image: postgres
+    container_name: postgres
+    command: postgres -c 'max_connections=500'
+    restart: always
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - ALLOW_IP_RANGE='0.0.0.0/0'
+      - TZ=Asia/Istanbul
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgresdb:/var/lib/postgresql/data
+    networks:
+      - common_network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    depends_on:
+      - "postgres"
+    networks:
+      - common_network
+
+  rabbitmq:
+    build: ./rabbitmq
+    container_name: rabbitmq
+    restart: always
+    networks:
+      - common_network
+    ports:
+      - 5672:5672
+      - 15672:15672
+      - 15692:15692
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+
+  redis:
+    image: redis
+    container_name: redis
+    restart: always
+    networks:
+      - common_network
+    ports:
+      - "6379:6379"
+
+  mongo:
+    image: mongo
+    container_name: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    ports:
+      - "0.0.0.0:27017:27017"
+    networks:
+      - common_network
+    volumes:
+      - type: volume
+        source: mongodb
+        target: /data/db
+      - type: volume
+        source: mongoconfig
+        target: /data/configdb
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongoexpress
+    restart: always
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: admin
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_MONGODB_PORT: "27017"
+    ports:
+      - "0.0.0.0:8081:8081"
+    networks:
+      - common_network
+    depends_on:
+      - mongo
+
+networks:
+  common_network:
+    name: common-network
+
+volumes:
+  postgresdb:
+  pgadmin:
+  rabbitmq:
+  minio:
+  mongodb:
+    name: mongodb
+  mongoconfig:
+    name: mongoconfig
